@@ -1,5 +1,6 @@
 ---
 title: "Analysis: Sentiment Analysis of President Trump's Tweets and the SPY"
+author: Moko Sharma
 output: pdf_document 
 ---
 
@@ -65,4 +66,12 @@ legend( x = "topleft",
 cor.test( x = log_range, y = combined_df$Sentiment.Score ) 
 ```
 
+# Histogram of the Volume of SPY
+
+```{r}
+hist( x    = log( combined_df$volume ),
+      main = "Histogram of the Volume of SPY", 
+      xlab = "Volume of SPY",
+      col  = 'green' )
+```
 
