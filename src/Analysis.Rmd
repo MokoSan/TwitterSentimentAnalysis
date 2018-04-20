@@ -1,0 +1,11 @@
+---
+title: "Analysis: Sentiment Analysis of Trump's Tweets and the SPY"
+output: pdf_document 
+---
+
+```{r}
+combined_df <- read.csv( '../data/Combined_SentimentAndSPY.csv' )
+```
+
+```{r}
+```
