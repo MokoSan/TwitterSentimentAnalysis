@@ -1,11 +1,68 @@
 ---
-title: "Analysis: Sentiment Analysis of Trump's Tweets and the SPY"
+title: "Analysis: Sentiment Analysis of President Trump's Tweets and the SPY"
 output: pdf_document 
 ---
 
+# Reading in the combined Sentiment Analysis and SPY Dataframe via csv.   
+
 ```{r}
-combined_df <- read.csv( '../data/Combined_SentimentAndSPY.csv' )
+combined_df <- read.csv( '../../data/Combined_SentimentAndSPY.csv' )
+summary( combined_df )
+```
+
+# Histogram of the Sentiment Score 
+
+```{r}
+hist( x    = combined_df$Sentiment.Score,
+      main = "Histogram of the Sentiment Score", 
+      xlab = "Sentiment Score",
+      col  = 'blue' )
+```
+
+
+# Histogram of the Range
+
+```{r}
+hist( x    = combined_df$range,
+      main = 'Histogram of Range of SPY Prices',  
+      xlab = 'Range of SPY Prices',
+      col  = 'red' )
+```
+
+# Log Transforming the Range Because of Skewness
+
+```{r}
+log_range <- log( combined_df$range )
+hist( x    = log_range, 
+      main = 'Histogram of Log of Range of SPY Prices',  
+      xlab = 'Log of Range of SPY Prices',
+      col  = 'red' )
+```
+
+
+
+
+```{r}
+plot( x    = log_range, 
+      y    = combined_df$Sentiment.Score,
+      main = "Plot of Log Range vs. Sentiment Score",
+      xlab = 'Log Range of SPY Prices',
+      ylab = "Sentiment Score" )
+
+# Draw Regression Line
+regression.model <- lm( log_range ~ combined_df$Sentiment.Score ) 
+
+abline( a   = regression.model, 
+        col = 'red' )
+
+legend( x = "topleft", 
+        c("Regression Line"), 
+        col = c("red"), 
+        lwd = c( 2 ))
 ```
 
 ```{r}
+cor.test( x = log_range, y = combined_df$Sentiment.Score ) 
 ```
+
+
