@@ -1,25 +1,5 @@
-Twitter Sentiment Analysis
-==============================
+<img src="https://datasciencedegree.wisconsin.edu/wp-content/themes/data-gulp/images/logo.svg" width="300">
 
-## Introduction
+# Final Project, Data Science 710 
 
-Experimenting with Political Leaders' Tweets and SPY range movements for UWisconsin's Masters in Data Science Program for Programming for Data Science.
-
-## List of Screen Names Used 
-1. AllenWest
-2. BarackObama
-3. GOPLeader
-4. JimDeMint
-5. JoeBiden
-6. MicheleBachmann
-7. NancyPelosi
-8. OrrinHatch
-9. RepRonPaul
-10. SenJohnMcCain
-11. SpeakerBoehner
-12. SpeakerRyan
-13. ThadMcCotter
-14. VP
-15. jaredpolis
-16. keithellison
-17. realDonaldTrump
+Submit your final project via a pull request to this repository.  You'll find a detailed description in Final Project.docx.

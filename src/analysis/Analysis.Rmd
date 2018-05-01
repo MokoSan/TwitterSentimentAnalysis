@@ -1,77 +1,83 @@
 ---
-title: "Analysis: Sentiment Analysis of President Trump's Tweets and the SPY"
+title: "Sentiment Analysis of Political Leaders' Tweets and the SPY"
 author: Moko Sharma
 output: pdf_document 
 ---
 
-# Reading in the combined Sentiment Analysis and SPY Dataframe via csv.   
+# Introduction
 
-```{r}
-combined_df <- read.csv( '../../data/Combined_SentimentAndSPY.csv' )
-summary( combined_df )
+## Loading in the Data for Trump and Pence
+
+```{r warning=FALSE}
+library( ggplot2 )
+library(lubridate)  
+
+generateFileName <- function( fileName ) {
+  dataFolder  <- '../../data/'
+  paste( dataFolder, fileName, sep = '')
+}
+
+trumpDf     <- read.csv( generateFileName( 'realDonaldTrump.csv' ))
+mikePenceDf <- read.csv( generateFileName( 'VP.csv' ))
 ```
 
-# Histogram of the Sentiment Score 
+## Trump's Dataframe
 
 ```{r}
-hist( x    = combined_df$Sentiment.Score,
-      main = "Histogram of the Sentiment Score", 
-      xlab = "Sentiment Score",
+head( trumpDf )
+summary( trumpDf )
+names(trumpDf)[names(trumpDf) == "realDonaldTrump.Vader.Sentiment.Score" ] <- 'sentimentscore'
+```
+
+## Histogram of the Range of the SPY for the Days Trump Tweeted 
+
+```{r}
+hist( x    = trumpDf$range,
+      main = "Histogram of the SPY Price Range", 
+      xlab = "SPY Price Range",
       col  = 'blue' )
 ```
 
-
-# Histogram of the Range
+It is clear from the Histogram that the distribution of the SPY price range is __Right Skewed__ so, we will be using the __Log Transform__ to transform the data.
 
 ```{r}
-hist( x    = combined_df$range,
-      main = 'Histogram of Range of SPY Prices',  
-      xlab = 'Range of SPY Prices',
-      col  = 'red' )
+logTrumpPriceRange <- log( trumpDf$range )
+
+hist( x    = logTrumpPriceRange,
+      main = "Histogram of the SPY Price Range", 
+      xlab = "SPY Price Range",
+      col  = 'blue' )
 ```
 
-# Log Transforming the Range Because of Skewness
+## Plots
 
-```{r}
-log_range <- log( combined_df$range )
-hist( x    = log_range, 
-      main = 'Histogram of Log of Range of SPY Prices',  
-      xlab = 'Log of Range of SPY Prices',
-      col  = 'red' )
-```
-
-
-
-
-```{r}
-plot( x    = log_range, 
-      y    = combined_df$Sentiment.Score,
-      main = "Plot of Log Range vs. Sentiment Score",
-      xlab = 'Log Range of SPY Prices',
-      ylab = "Sentiment Score" )
-
-# Draw Regression Line
-regression.model <- lm( log_range ~ combined_df$Sentiment.Score ) 
-
-abline( a   = regression.model, 
-        col = 'red' )
-
-legend( x = "topleft", 
-        c("Regression Line"), 
-        col = c("red"), 
-        lwd = c( 2 ))
+```{r warning=FALSE}
+ggplot( trumpDf, aes( as.Date( date ))) +
+  geom_line( aes( y = logTrumpPriceRange ), color = 'red' ) + 
+  scale_x_date( 'Date' ) + 
+  ylab( 'Log SPY Price Range' ) +
+  ggtitle( 'Log SPY Price Range vs. Dates Trump Tweeted' )
 ```
 
 ```{r}
-cor.test( x = log_range, y = combined_df$Sentiment.Score ) 
+plot( x = logTrumpPriceRange,
+      y = trumpDf$sentimentscore )
 ```
 
-# Histogram of the Volume of SPY
+
 
 ```{r}
-hist( x    = log( combined_df$volume ),
-      main = "Histogram of the Volume of SPY", 
-      xlab = "Volume of SPY",
-      col  = 'green' )
+trumpCor.test <-
+  cor.test( x = trumpDf$range, 
+            y = trumpDf$realDonaldTrump.Vader.Sentiment.Score )
+trumpCor.test
 ```
 
+
+
+## Mike Pence's Dataframe
+
+```{r}
+head( mikePenceDf )
+summary( mikePenceDf )
+```

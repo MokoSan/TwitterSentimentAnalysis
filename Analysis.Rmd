@@ -1,0 +1,315 @@
+---
+title: "Analysis: Sentiments of Political Leaders' Tweets vs. the SPY Price Range"
+author: Moko Sharma ( Mukund Raghav Sharma )
+output: pdf_document 
+---
+
+# Introduction
+
+Once our data is successfully acquired and is in the form we want it in, our next step is to analyze it to confirm or disconfirm if there is any correlation between the sentiment of tweets of 3 famous political leaders and the price range of the SPY.  
+
+Since we are dealing with time series data, there are some nuances associated with dealing with correlations due to effects of __Seasonality__ and __Trends__. Hence, our first step is to discern if the Time Series is stationary, which in a nutshell means that the seasonality and trend component are basically nullified, by the __Augmented Dickey Fuller Test__ that confirms the stationarity of the time series in the alternative hypothesis if the p-value is lower than our significance level of 0.05. 
+
+If there are some non-stationary effects, we will difference the said series twice to remove them. We could have used the log-transformation but since we have a lot of negative values in both the sentiment and price range column, we would lose a lot of information in the process.
+
+Once we have successfully got the series in a stationary form, our next task is to remove Autocorrelation that can be tested using the __Durbin-Watson Test__. If we detect autocorrelation, it can be fixed by differencing the two series by 1.
+
+After this, we will plot the __Cross-Correlation__ between the Sentiment Score and SPY Price Range time series, a prerequisite of which is that the time series in question has to be stationary. And eventually look at the __Pearson's product-moment Correlation__ test after all the transformations to truly confirm if there is any correlation between the two time series at hand.
+
+## Loading the Appropriate Libraries
+
+We start off by loading in the appropraite libraries used for the analysis. 
+
+```{r, warning=F, info=F}
+library( tseries )
+library( lmtest )
+library( ggplot2 )
+```
+
+## Loading in the Data for Trump, Pence and Ryan
+
+Next, we take the data produced by the Python portion of this project and loading the csvs as dataframes.
+
+```{r warning=F}
+generateFileName <- function( fileName ) {
+  dataFolder  <- './data/'
+  paste( dataFolder, fileName, sep = '')
+}
+
+trumpDf     <- read.csv( generateFileName( 'realDonaldTrump.csv' ))
+mikePenceDf <- read.csv( generateFileName( 'VP.csv' ))
+paulRyanDf  <- read.csv( generateFileName( 'SpeakerRyan.csv' ))
+```
+
+## Trump's Dataframe: Answering if Trump's Tweets' Sentiment is Correlated with the SPY Price Ranges 
+
+Let's start off by doing a smoke test and take a look at the first few rows of the Trump dataframe.
+
+```{r}
+head( trumpDf )
+```
+
+Next, let's plot the Timeseries of the Sentiment Score and SPY Values for Trump's Tweets' Sentiment. 
+
+```{r}
+trumpPlot <-
+  ggplot( data = trumpDf,  aes( x = as.Date( trumpDf$date ))) + 
+    geom_line( aes(  y     = trumpDf$realDonaldTrump.Vader.Sentiment.Score,
+                     color = 'Sentiment Score' )) + 
+    geom_line( aes( y = trumpDf$range, color = 'SPY Price Range' )) + 
+    scale_x_date( 'Date' ) + ylab( ' ' ) + 
+    ggtitle( "Trump's Sentiment Score vs. SPY Price Range" )
+  
+trumpPlot
+```
+
+At first glance, the highs of the SPY Price Range don't necessarily match the highs of the Sentiment Score and vice versa about lows.
+
+### Extracting Time Series From the Dataframe
+
+Once we have plotted the raw time series via the dataframe, we will simply extract out the time series portion to make our analysis a bit simplier. We aren't to worry too much about the start and end time since we have confirmed from our python analysis that both the sentiment and spy range series have the same cardinality.
+
+```{r}
+trumpTs.Sentiment <- 
+  ts( data  = trumpDf$realDonaldTrump.Vader.Sentiment.Score )
+
+trumpTs.SPY <- 
+  ts( data = trumpDf$range )
+```
+
+### Test for Stationarity
+
+As mentioned before, before diving into creating cross-correlations, we want to test for stationarity of the two series. We do this for both the Sentiment and SPY Price Range series by 
+
+#### Sentiment Time Series 
+
+```{r}
+adf.test( trumpTs.Sentiment )
+```
+
+Seems like since the p-value of the Sentiment Analysis is 0.01, we accept the Alternative Hypothesis that the time series is stationary with a significance level of 0.05.
+
+#### SPY Time Series
+
+```{r}
+adf.test( trumpTs.SPY )
+```
+
+Since the p-value is less than our significance level of 0.05, we accept the Alternative Hypothesis i.e. the time series is stationary.
+
+Great - no de-trending and de-seasonality needed as we accept the alternative hypothesis in both cases. Next, let's test for __Auto-Correlation__.
+
+### Test for Autocorrelation 
+
+Now, let's check for Autocorrelation. We do this by using the __Durbin-Watson Test__. 
+
+```{r}
+trump.model <- trumpTs.Sentiment ~ trumpTs.SPY
+dwtest( trump.model )
+```
+
+The p-value of 0.0101 means that we accept the alternative hypothesis i.e. there is a true autocorrelation greater than 0 implying there is autocorrelation. In an effort to reduce the autocorrelation, let's difference the time series by 1.
+
+```{r}
+trumpTs.Sentiment.1diff <- 
+  diff( trumpTs.Sentiment, differences = 1 )
+
+trumpTs.SPY.1diff <-
+  diff( trumpTs.SPY, differences = 1 )
+
+dwtest( trumpTs.Sentiment.1diff ~ trumpTs.SPY.1diff )
+```
+
+We have now successfully fixed the autocorrelation issue since the p-value = 1 and hence we cannot reject the null hypothesis. We are at a point where we can take a look at the __Cross-Correlation__ Plot.
+
+```{r}
+trump.ccf <- ccf( y    = trumpTs.Sentiment.1diff, 
+                  x    = trumpTs.SPY.1diff,
+                  ylab = "Cross-Correlation", 
+                  xlab = "Lag",
+                  main = " " )
+trump.ccf
+```
+
+We notice that there is high correlation on __just__ the -13th, 11th and 16th lag. Next, let's conduct the Pearson's Moment Correlation test on the stationary and non-autocorrelated data.
+
+```{r}
+cor.test( x = trumpTs.SPY.1diff, 
+          y = trumpTs.Sentiment.1diff )
+```
+
+This p-value of 0.1901 >> 0.05 highlights that the two series __aren't__ correlated and we evidently reject our alternative hypothesis that the true correlation is not equal to 0.
+
+## Generalizing the Pipeline
+
+Now that we have successfully completed the test for correlation for Trump, let's generalize the pipeline to make it easier to do the same for Pence and Ryan.
+
+```{r}
+correlationTest <- function( sentimentColumn, spyColumn, alpha = 0.05 ) {
+  
+  #############################################  
+  # Converting the data into Time Series Data #
+  #############################################  
+  sentiment.ts <- ts( sentimentColumn )
+  spy.ts       <- ts( spyColumn )
+  
+  result.original.sentiment <- sentiment.ts
+  result.original.spy       <- spy.ts
+  
+  #########################
+  # Test for Stationarity #
+  #########################
+  # Conduct ADF Test for the Sentiment.
+  sentiment.adf.test <- adf.test( sentiment.ts )
+  
+  if ( sentiment.adf.test$p.value > alpha ) {
+    sentiment.ts <- 
+      diff( sentiment.ts, differences = 2 )
+  }
+  
+  # Conduct ADF Test for the SPY Price Range. 
+  spy.adf.test <- adf.test( spy.ts )
+  
+  if ( spy.adf.test$p.value > alpha ) {
+    spy.ts <- 
+      diff( spy.ts, differences = 2 )
+  }
+  
+  ############################
+  # Test for Autocorrelation #
+  ############################
+  # Conduct DW Test
+  model      <- sentiment.ts ~ spy.ts 
+  ts.dw.test <- dwtest( model ) 
+    
+  # Alternative Hypothesis for DW Test => There is Auto-correlation
+  if ( ts.dw.test$p.value < alpha ) {
+    
+    # Fix auto-correlation by diffing series 1 time.
+    sentiment.ts <-
+      diff( sentiment.ts, differences = 1 )
+    spy.ts <- 
+      diff( spy.ts, differences = 1 )
+  } 
+  
+  result.final.sentiment <- sentiment.ts
+  result.final.spy       <- spy.ts
+  
+  ########################
+  # Test for Correlation #
+  ########################
+  # Conduct the Correlation Test
+  result.cor <-
+    cor.test( y = sentiment.ts,
+              x = spy.ts )
+  
+  result.pval <- result.cor$p.value
+  
+  list( originalSentiment = result.original.sentiment, 
+        originalSPY       = result.original.spy, 
+        finalSentiment    = result.final.sentiment,
+        finalSPY          = result.final.spy,
+        corr              = result.cor )
+}
+```
+
+## Pence's Dataframe: Answering if Pence's Tweets' Sentiment is Correlated with the SPY Price Ranges 
+
+Let's do a smoke test and print out the first few rows of the dataframe.
+
+```{r}
+head( mikePenceDf )
+```
+
+Next, like before, let's do a line plot of the Sentiment Score vs. Price Range. 
+
+```{r, warning = F}
+pencePlot <-
+  ggplot( data = mikePenceDf,  aes( x = as.Date( mikePenceDf$date ))) + 
+    geom_line( aes(  y     = mikePenceDf$VP.Vader.Sentiment.Score,
+                     color = 'Sentiment Score' )) + 
+    geom_line( aes( y = mikePenceDf$range, color = 'SPY Price Range' )) + 
+    scale_x_date( 'Date' ) + ylab( ' ' ) + 
+    ggtitle( "Pence's Sentiment Score vs. SPY Price Range" )
+  
+pencePlot
+```
+
+Next, let's run the generalized pipeline of the correlation for Pence's tweets.  
+
+```{r, warning = FALSE, Information = FALSE}
+penceResult <-
+  correlationTest( mikePenceDf$VP.Vader.Sentiment.Score, 
+                   mikePenceDf$range )
+```
+
+#### Cross-Correlation Plot
+
+```{r}
+pence.ccf <- ccf( y    = penceResult$finalSentiment,
+                  x    = penceResult$finalSPY,
+                  ylab = "Cross-Correlation", 
+                  xlab = "Lag",
+                  main = " " )
+```
+
+```{r}
+penceResult$corr
+```
+
+The p-value is >> 0.05, our significance level implying that we fail to reject our null hypothesis i.e. the true correlation is close to 0. In other words, Mike Pence's Tweets' Sentiment and SPY Price Range are not correlated. 
+
+## Paul Ryan's Dataframe: Answering if Paul Ryan's Tweets' Sentiment is Correlated with the SPY Price Ranges 
+
+Like before, let's do a smoke test of the dataframe. 
+
+```{r}
+head( paulRyanDf )
+```
+
+Let's do a line plot of the Sentiment Score vs. Price Range. 
+
+```{r, warning = F}
+paulRyanPlot <-
+  ggplot( data = paulRyanDf,  aes( x = as.Date( paulRyanDf$date ))) + 
+    geom_line( aes(  y     = paulRyanDf$SpeakerRyan.Vader.Sentiment.Score,
+                     color = 'Sentiment Score' )) + 
+    geom_line( aes( y = paulRyanDf$range, color = 'SPY Price Range' )) + 
+    scale_x_date( 'Date' ) + ylab( ' ' ) + 
+    ggtitle( "Paul Ryan's Sentiment Score vs. SPY Price Range" )
+  
+paulRyanPlot
+```
+
+
+Next, let's run the generalized pipeline of the correlation for Paul Ryan's tweets.  
+
+```{r}
+ryanResult <- 
+  correlationTest( paulRyanDf$SpeakerRyan.Vader.Sentiment.Score,
+                   paulRyanDf$range )
+```
+
+#### Correlation Plot
+  
+```{r}
+paulRyan.ccf <- ccf( y    = ryanResult$originalSentiment,
+                     x    = ryanResult$originalSPY,
+                     ylab = "Cross-Correlation", 
+                     xlab = "Lag",
+                     main = " " )
+```
+
+Paul Ryan's cross-correlation is extremely indicative of a strong correlation. Let's finally look at the Pearson's product-moment correlation test. 
+
+```{r}
+ryanResult$corr
+```
+
+A p-value that low and the cross-correlation plot looking extremely positive highlights the fact that Paul Ryan's tweets are the most correlated out of the 3 accounts we considered. We hence, reject the null hypothesis and accept the alternative hypothesis that the true correlation is not equal to 0.
+
+# Conclusion
+
+We looked at the Twitter Sentiment Score of Donald Trump, Mike Pence and Paul Ryan and discerned the highest correlation of the Sentiment Score vs. the SPY price range to be Paul Ryan's.    
+
+During our analysis we encountered and handled nuances of time series data such as Autocorrelation and Non-Stationarity via differencing.  
